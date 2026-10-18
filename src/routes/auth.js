@@ -1,7 +1,10 @@
 const express = require('express');
 const authRouter = express.Router();
+const { hashPass } = require('../services/password');
+const pool = require('../db/pool')
 
-authRouter.post('/register', (req, res) => {
+
+authRouter.post('/register', async (req, res) => {
     const body = req.body;
 
     if (typeof body !== 'object' || body === null || Array.isArray(body)) {
@@ -92,11 +95,49 @@ authRouter.post('/register', (req, res) => {
         });
     }
 
+
+    try {   
+        
+        const passwordHash = await hashPass(body.password);
+
+        const result = await pool.query(
+            `INSERT INTO users (email, password_hash, display_name)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, display_name, created_at`,
+            [email, passwordHash, displayName]
+        )
+
+        const account = result.rows[0];
+
+        return res.status(201).json({
+            user: {
+                id: account.id,
+                email: account.email,
+                displayName: account.display_name,
+                createdAt: account.created_at
+            }
+        })
+        
+
+    } catch(err) {  
+        console.error('Registration hashing failed: ', err.message);
+
+        return res.status(500).json({
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unable to create account'
+            }
+        })
+    }
+
     // Temporary response: account creation and remaining request checks follow later.
-    return res.json({
-        message: 'Input types accepted; account creation is not implemented yet.',
-        input: { email, displayName }
-    });
+   // return res.json({
+        //message: 'Input types accepted; account creation is not implemented yet.',
+     //   input: { email, displayName }
+    //   });
+
+
+
 });
 
 module.exports = authRouter;
