@@ -1,6 +1,6 @@
 const express = require('express');
 const authRouter = express.Router();
-const { hashPass } = require('../services/password');
+const { hashPass, verifyPass  } = require('../services/password');
 const pool = require('../db/pool')
 
 
@@ -179,9 +179,48 @@ authRouter.post('/login', async (req, res) => {
     const email = body.email.trim().toLowerCase();
     // Keep body.password unchanged for the later password-verification step.
 
+
+    try {
+
+        const result = await pool.query(`SELECT id, email, display_name, password_hash 
+                        FROM users WHERE email = $1`, [email])
+
+        const account = result.rows[0]
+
+        if(!account) {
+            return res.status(401).json({
+                error: {
+                    code: "INVALID_CREDENTIALS",
+                    message: "Email or password is incorrect"
+                }
+            })
+        }
+
+        const matches = await verifyPass( account.password_hash, body.password)
+
+        if(!matches) {
+            return res.status(401).json({
+                error: {
+                    code: 'INVALID_CREDENTIALS',
+                    message: "Email or password is incorrect"
+                }
+            })
+        }
+
+    } catch(err) {
+
+        return res.status(500).json({
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unable to log in'
+            }
+        })
+
+    }
+
     // Temporary response: this does not verify credentials or sign anyone in.
     return res.status(200).json({
-        message: 'Input types accepted; login is not implemented yet.',
+        message: 'credentials verified; session not created yet.',
         input: { email }
     });
 });
