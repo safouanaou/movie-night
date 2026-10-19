@@ -120,6 +120,20 @@ authRouter.post('/register', async (req, res) => {
         
 
     } catch(err) {  
+
+        if (
+            err.code === '23505' &&
+            err.constraint === 'users_email_key'
+        ) {
+            return res.status(409).json({
+                error: {
+                    code: 'EMAIL_ALREADY_EXISTS',
+                    message: 'An account with this email already exists.'
+                }
+            });
+        }
+
+
         console.error('Registration hashing failed: ', err.message);
 
         return res.status(500).json({
@@ -138,6 +152,38 @@ authRouter.post('/register', async (req, res) => {
 
 
 
+});
+
+authRouter.post('/login', async (req, res) => {
+    const body = req.body;
+
+    // Check the body before reading any of its fields.
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        return res.status(400).json({
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Request body must be a JSON object.'
+            }
+        });
+    }
+
+    if (typeof body.email !== 'string' || typeof body.password !== 'string') {
+        return res.status(400).json({
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: 'Email and password must be strings.'
+            }
+        });
+    }
+
+    const email = body.email.trim().toLowerCase();
+    // Keep body.password unchanged for the later password-verification step.
+
+    // Temporary response: this does not verify credentials or sign anyone in.
+    return res.status(200).json({
+        message: 'Input types accepted; login is not implemented yet.',
+        input: { email }
+    });
 });
 
 module.exports = authRouter;
