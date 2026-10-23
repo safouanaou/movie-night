@@ -202,10 +202,43 @@ authRouter.post('/login', async (req, res) => {
             return res.status(401).json({
                 error: {
                     code: 'INVALID_CREDENTIALS',
-                    message: "Email or password is incorrect"
+                    message: "Email or password is incorrect" 
                 }
             })
         }
+
+        return req.session.regenerate(
+            (err) => {
+                if(err) {
+                    return res.status(500).json({
+                        error: {
+                            code: 'INTERNAL_ERROR',
+                            message: 'Unable to log in'
+                        }
+                    })
+                }
+
+                req.session.userId = account.id;
+
+                req.session.save((err) => {
+                    if(err){
+                        res.status(500).json({
+                            error: {
+                                code: 'INTERNAL_ERROR',
+                                message: 'Unable to log in'
+                            }
+                        })
+                    }
+                })
+
+
+            }
+        );
+
+        return res.status(200).json({
+            message: 'Logged in successfully'
+        })
+
 
     } catch(err) {
 
