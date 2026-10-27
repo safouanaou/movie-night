@@ -222,22 +222,24 @@ authRouter.post('/login', async (req, res) => {
 
                 req.session.save((err) => {
                     if(err){
-                        res.status(500).json({
+                        return res.status(500).json({
                             error: {
                                 code: 'INTERNAL_ERROR',
                                 message: 'Unable to log in'
                             }
                         })
                     }
+
+                    return res.status(200).json({
+                        message: 'Logged in successfully'
+                    })
                 })
 
 
             }
         );
 
-        return res.status(200).json({
-            message: 'Logged in successfully'
-        })
+        
 
 
     } catch(err) {
@@ -251,11 +253,74 @@ authRouter.post('/login', async (req, res) => {
 
     }
 
-    // Temporary response: this does not verify credentials or sign anyone in.
-    return res.status(200).json({
-        message: 'credentials verified; session not created yet.',
-        input: { email }
-    });
 });
+
+authRouter.get('/me', async (req,res) => {
+
+    const userId = req.session.userId;
+
+    if(!userId){
+        return res.status(401).json({
+            error: {
+                code: 'UNAUTHENTICATED',
+                message: 'please log in.'
+            }
+        });
+    }
+
+    try {
+        const result = await pool.query('SELECT id, email, created_at, display_name FROM users WHERE id = $1', [userId])
+        if(!result.rows[0]) {
+            return res.status(401).json({
+                error:{
+                    code: 'UNAUTHENTICATED',
+                    message: 'please log in'
+                }
+            })
+        }
+
+        return res.status(200).json({
+            user: {
+                id: result.rows[0].id,
+                email: result.rows[0].email,
+                displayName: result.rows[0].display_name,
+                createdAt: result.rows[0].created_at
+            }
+        })
+
+    } catch(err){
+        return res.status(500).json({
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'cant fetch user info'
+            }
+        })
+    }
+
+})
+
+authRouter.post('/logout', async (req, res) => {
+    req.session.destroy((err)=>{
+        if(err){
+            return res.status(500).json({
+                error: {
+                    code: 'INTERNAL_ERROR',
+                    message: 'cant log out'
+                }
+            })
+        }
+
+        res.clearCookie('connect.sid', {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production'
+        })
+
+        return res.status(200).json({
+            message: 'Logged out successfully'
+        });
+    })
+})
 
 module.exports = authRouter;
