@@ -1,7 +1,8 @@
 const express = require('express');
 const authRouter = express.Router();
 const { hashPass, verifyPass  } = require('../services/password');
-const pool = require('../db/pool')
+const pool = require('../db/pool');
+const requireAuth = require('../middleware/requireAuth')
 
 
 authRouter.post('/register', async (req, res) => {
@@ -255,18 +256,9 @@ authRouter.post('/login', async (req, res) => {
 
 });
 
-authRouter.get('/me', async (req,res) => {
+authRouter.get('/me', requireAuth, async (req,res) => {
 
     const userId = req.session.userId;
-
-    if(!userId){
-        return res.status(401).json({
-            error: {
-                code: 'UNAUTHENTICATED',
-                message: 'please log in.'
-            }
-        });
-    }
 
     try {
         const result = await pool.query('SELECT id, email, created_at, display_name FROM users WHERE id = $1', [userId])
