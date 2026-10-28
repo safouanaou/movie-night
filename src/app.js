@@ -12,6 +12,8 @@ if (!process.env.SESSION_SECRET) {
 
 app.use(express.json());
 
+app.use(express.static('public'))
+
 app.use(session({
     store: new PgSessionStore({
         pool,
